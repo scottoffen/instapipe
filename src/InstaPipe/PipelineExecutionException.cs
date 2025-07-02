@@ -43,5 +43,9 @@ public class PipelineExecutionException<T> : Exception
     {
         StepName = stepName;
         StepOrder = stepOrder;
+
+        Data["PipelineStepName"] = stepName;
+        Data["PipelineStepOrder"] = stepOrder;
+        Data["PipelineContextType"] = typeof(T).FullName;
     }
 }
