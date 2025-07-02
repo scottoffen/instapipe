@@ -1,11 +1,11 @@
 using System.Reflection;
 
-namespace InstaPipe;
+namespace InstaPipe.Metadata;
 
 /// <summary>
 /// Represents metadata extracted from a pipeline step implementation and its associated attribute
 /// </summary>
-internal sealed class PipelineStepDescriptor
+public sealed class PipelineStepDescriptor
 {
     /// <summary>
     /// The concrete type that implements the pipeline step

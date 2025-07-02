@@ -1,3 +1,5 @@
+using InstaPipe.Metadata;
+
 namespace InstaPipe;
 
 /// <summary>
@@ -20,4 +22,3 @@ public interface IPipelineStep<T> : IPipelineStepMetadata
     /// <param name="cancellationToken">A token that can be used to cancel the operation</param>
     Task InvokeAsync(T context, PipelineDelegate<T> next, CancellationToken cancellationToken = default);
 }
-
