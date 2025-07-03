@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using InstaPipe.Metadata;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,25 +15,25 @@ public static class Pipeline
     /// <summary>
     /// Discovers all <see cref="IPipelineStep{T}"/> implementations in the assembly containing the specified type.
     /// </summary>
-    public static IEnumerable<PipelineStepDescriptor> Discover<T>(
+    public static IEnumerable<PipelineStepDescriptor> DiscoverFromType<T>(
         Type typeMarker,
         string? environment = null,
         ILogger? logger = null)
-        => Discover<T>(typeMarker.Assembly, environment, logger);
+        => Discover<T>(new[] { typeMarker.Assembly }, environment, logger);
 
     /// <summary>
     /// Discovers all <see cref="IPipelineStep{T}"/> implementations in the assembly containing the specified type.
     /// </summary>
-    public static IEnumerable<PipelineStepDescriptor> Discover<T>(
+    public static IEnumerable<PipelineStepDescriptor> DiscoverFromType<T>(
         Type typeMarker,
         string? environment,
         ILoggerFactory? loggerFactory)
-        => Discover<T>(typeMarker.Assembly, environment, loggerFactory?.CreateLogger($"Pipeline<{typeof(T).Name}>"));
+        => Discover<T>(new[] { typeMarker.Assembly }, environment, loggerFactory?.CreateLogger($"Pipeline<{typeof(T).Name}>"));
 
     /// <summary>
     /// Discovers all <see cref="IPipelineStep{T}"/> implementations in the specified assembly.
     /// </summary>
-    public static IEnumerable<PipelineStepDescriptor> Discover<T>(
+    public static IEnumerable<PipelineStepDescriptor> DiscoverFromAssembly<T>(
         Assembly assembly,
         string? environment = null,
         ILogger? logger = null)
@@ -41,7 +42,7 @@ public static class Pipeline
     /// <summary>
     /// Discovers all <see cref="IPipelineStep{T}"/> implementations in the specified assembly.
     /// </summary>
-    public static IEnumerable<PipelineStepDescriptor> Discover<T>(
+    public static IEnumerable<PipelineStepDescriptor> DiscoverFromAssembly<T>(
         Assembly assembly,
         string? environment,
         ILoggerFactory? loggerFactory)
@@ -109,7 +110,8 @@ public static class Pipeline
         ServiceLifetime lifetime = ServiceLifetime.Scoped,
         ILogger? logger = null)
     {
-        var stepType = typeof(IPipelineStep<T>);
+        var stepInterface = typeof(IPipelineStep<T>);
+        var lazyStepInterface = typeof(Lazy<>).MakeGenericType(stepInterface);
         var runnerType = typeof(IPipelineRunner<T>);
 
         if (services.Any(s => s.ServiceType == runnerType))
@@ -123,7 +125,31 @@ public static class Pipeline
             logger?.LogDebug("Registering pipeline step {StepType} with {Lifetime} lifetime",
                 descriptor.ImplementationType.FullName ?? descriptor.ImplementationType.Name, lifetime);
 
-            services.TryAddEnumerable(ServiceDescriptor.Describe(stepType, descriptor.ImplementationType, lifetime));
+            // Register the IPipelineStep<T> implementation
+            services.TryAddEnumerable(ServiceDescriptor.Describe(stepInterface, descriptor.ImplementationType, lifetime));
+
+            // Register the concrete implementation type
+            services.Add(ServiceDescriptor.Describe(descriptor.ImplementationType, descriptor.ImplementationType, lifetime));
+
+            // Register Lazy<IPipelineStep<T>>
+            services.Add(ServiceDescriptor.Describe(lazyStepInterface, sp =>
+            {
+                var funcType = typeof(Func<>).MakeGenericType(stepInterface);
+
+                var methodInfo = typeof(ServiceProviderServiceExtensions)
+                    .GetMethod(nameof(ServiceProviderServiceExtensions.GetRequiredService), new[] { typeof(IServiceProvider) });
+
+                if (methodInfo is null)
+                    throw new InvalidOperationException("Could not find GetRequiredService<T>(IServiceProvider).");
+
+                var genericMethod = methodInfo.MakeGenericMethod(descriptor.ImplementationType);
+
+                var factoryDelegate = Delegate.CreateDelegate(funcType, sp, genericMethod);
+
+                return Activator.CreateInstance(lazyStepInterface, factoryDelegate)
+                    ?? throw new InvalidOperationException($"Could not create Lazy<{stepInterface}>.");
+            }, lifetime));
+
         }
 
         logger?.LogDebug("Registering pipeline runner {RunnerType} with {Lifetime} lifetime",

@@ -1,6 +1,10 @@
 using System.Diagnostics;
+#if !NETSTANDARD2_0
 using System.Text.Json;
 using System.Text.Json.Serialization;
+#else
+using Newtonsoft.Json;
+#endif
 using Microsoft.Extensions.Logging;
 
 namespace InstaPipe;
@@ -12,12 +16,14 @@ namespace InstaPipe;
 public class PipelineRunner<T> : IPipelineRunner<T>
 {
     private static readonly string ActivityName = "PipelineStep";
+
+#if !NETSTANDARD2_0
     private static readonly JsonSerializerOptions _options = new()
     {
         WriteIndented = true,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
-
+#endif
     private readonly IEnumerable<Lazy<IPipelineStep<T>>> _lazySteps;
     private readonly ILogger? _logger;
 
@@ -45,9 +51,14 @@ public class PipelineRunner<T> : IPipelineRunner<T>
                 step.MayShortCircuit,
                 step.ShortCircuitCondition
             });
-
+#if !NETSTANDARD2_0
         return JsonSerializer.Serialize(steps, _options);
+#else
+        return JsonConvert.SerializeObject(steps, Formatting.Indented);
+#endif
     }
+
+#if !NETSTANDARD2_0
 
     public string DescribeSchema()
     {
@@ -69,6 +80,7 @@ public class PipelineRunner<T> : IPipelineRunner<T>
 
         return JsonSerializer.Serialize(schema, _options);
     }
+#endif
 
     public async Task ExecuteAsync(T context, CancellationToken cancellationToken = default)
     {
@@ -140,7 +152,7 @@ public class PipelineRunner<T> : IPipelineRunner<T>
                             DiagnosticListener.StopActivity(activity, GetStepMetadata(step, order, wasCalled));
                         }
 #else
-                        activity?.SetTag("pipeline.short_circuited", !wasCalled);
+                        activity?.SetTag("pipeline.short_circuited", (!wasCalled).ToString());
 #endif
                     }
                     catch (Exception ex)
@@ -203,7 +215,7 @@ public class PipelineRunner<T> : IPipelineRunner<T>
 
         activity.SetTag("pipeline.context_type", typeof(T).FullName);
         activity.SetTag("pipeline.step_name", step.Name);
-        activity.SetTag("pipeline.step_order", order);
+        activity.SetTag("pipeline.step_order", order.ToString());
         activity.SetTag("pipeline.step_description", step.Description);
     }
 #endif
