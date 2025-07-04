@@ -1,4 +1,4 @@
-namespace InstaPipe;
+namespace InstaPipe.Metadata;
 
 /// <summary>
 /// Provides descriptive metadata for a pipeline step used in diagnostics, documentation, or runtime introspection
@@ -25,4 +25,3 @@ public interface IPipelineStepMetadata
     /// </summary>
     string? ShortCircuitCondition { get; }
 }
-

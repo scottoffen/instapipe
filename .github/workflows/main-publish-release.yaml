@@ -148,7 +148,7 @@ jobs:
         echo "pushNuget: $PUSH_NUGET"
 
     # Publishes the package to GitHub Packages
-    # This step is run by default, but can be disabled
+    # This step is run by default, but should be disabled when the workflow is triggered manually
     - name: Publish to GitHub Packages
       if: env.PUSH_GITHUB == 'true'
       run: |
@@ -156,7 +156,7 @@ jobs:
         dotnet nuget push ./publish/*.snupkg --source https://nuget.pkg.github.com/scottoffen/index.json --api-key ${{ secrets.GITHUB_TOKEN }}
 
     # Publishes the package to Nuget.org
-    # This step is optional and can be triggered manually
+    # This step is optional and can ONLY be triggered manually
     # The NUGET_API_KEY secret must be set in the repository settings
     - name: Publish to Nuget.org
       if: env.PUSH_NUGET == 'true'
@@ -164,8 +164,10 @@ jobs:
         dotnet nuget push ./publish/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_API_KEY }}
 
     # Outputs the version number for the release
+    # This step is run only if the PUSH_GITHUB input is true
     # See https://www.jameskerr.blog/posts/how-to-set-output-in-github-actions/
     - name: Get Version Info
+      if: env.PUSH_GITHUB == 'true'
       id: get_version
       run: |
         cd src/InstaPipe
@@ -173,7 +175,9 @@ jobs:
         cd ../..
 
     # Create a release tag based on the version number
+    # This step is run only if the PUSH_GITHUB input is true
     - name: Create Release
+      if: env.PUSH_GITHUB == 'true'
       run: gh release create ${{ steps.get_version.outputs.version }} --title ${{ steps.get_version.outputs.version }} --notes "Release ${{ steps.get_version.outputs.version }}" --target main
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
