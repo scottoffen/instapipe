@@ -25,12 +25,38 @@ public sealed class PipelineStepAttribute : Attribute
     public string? Environment { get; }
 
     /// <summary>
-    /// Initializes a new instance of the attribute with the specified order, enabled flag, and environment
+    /// Initializes a new instance of the attribute with the specified order and default enabled state.
+    /// </summary>
+    /// <param name="order"></param>
+    public PipelineStepAttribute(int order) : this(order, true, null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the attribute with the specified order and enabled state.
+    /// </summary>
+    /// <param name="order"></param>
+    /// <param name="isEnabled"></param>
+    public PipelineStepAttribute(int order, bool isEnabled) : this(order, isEnabled, null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the attribute with the specified order and environment.
+    /// </summary>
+    /// <param name="order"></param>
+    /// <param name="environment"></param>
+    public PipelineStepAttribute(int order, string environment) : this(order, true, environment)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the attribute with the specified order, enabled state, and environment.
     /// </summary>
     /// <param name="order">The execution order of the step</param>
     /// <param name="isEnabled">Whether the step is enabled by default</param>
     /// <param name="environment">The environment in which the step should be active</param>
-    public PipelineStepAttribute(int order, bool isEnabled = true, string? environment = null)
+    public PipelineStepAttribute(int order, bool isEnabled, string? environment = null)
     {
         Order = order;
         IsEnabled = isEnabled;
